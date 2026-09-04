@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net">
   <diagram name="Página-1" id="MXmkZIXziFzwpWo8aYya">
-    <mxGraphModel dx="2491" dy="921" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2241" dy="783" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -219,6 +219,78 @@
             <mxPoint as="offset" />
           </mxGeometry>
         </mxCell>
+        <!-- ===== MODULO UBICACIONES (RF-08, RF-09) ===== -->
+
+        <!-- Entidad UBICACIONES -->
+        <mxCell id="ubic-1" parent="1" style="whiteSpace=wrap;html=1;align=center;" value="UBICACIONES" vertex="1">
+          <mxGeometry height="40" width="120" x="600" y="150" as="geometry" />
+        </mxCell>
+
+        <!-- Atributo clave id_ubicacion (subrayado) -->
+        <mxCell id="ubic-2" parent="1" style="ellipse;whiteSpace=wrap;html=1;align=center;fontStyle=4" value="id_ubicacion" vertex="1">
+          <mxGeometry height="40" width="110" x="600" y="30" as="geometry" />
+        </mxCell>
+        <mxCell id="ubic-2-edge" edge="1" parent="1" source="ubic-2" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" target="ubic-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Atributo nombre -->
+        <mxCell id="ubic-3" parent="1" style="ellipse;whiteSpace=wrap;html=1;align=center;" value="nombre" vertex="1">
+          <mxGeometry height="40" width="100" x="750" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="ubic-3-edge" edge="1" parent="1" source="ubic-3" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" target="ubic-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Atributo direccion -->
+        <mxCell id="ubic-4" parent="1" style="ellipse;whiteSpace=wrap;html=1;align=center;" value="direccion" vertex="1">
+          <mxGeometry height="40" width="100" x="790" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ubic-4-edge" edge="1" parent="1" source="ubic-4" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" target="ubic-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Atributo ciudad -->
+        <mxCell id="ubic-5" parent="1" style="ellipse;whiteSpace=wrap;html=1;align=center;" value="ciudad" vertex="1">
+          <mxGeometry height="40" width="100" x="750" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="ubic-5-edge" edge="1" parent="1" source="ubic-5" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" target="ubic-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Atributo capacidad -->
+        <mxCell id="ubic-6" parent="1" style="ellipse;whiteSpace=wrap;html=1;align=center;" value="capacidad" vertex="1">
+          <mxGeometry height="40" width="100" x="600" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="ubic-6-edge" edge="1" parent="1" source="ubic-6" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" target="ubic-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Relación SE_REALIZA_EN entre EVENTOS y UBICACIONES -->
+        <mxCell id="ubic-rel" parent="1" style="shape=rhombus;perimeter=rhombusPerimeter;whiteSpace=wrap;html=1;align=center;" value="SE_REALIZA_EN" vertex="1">
+          <mxGeometry height="60" width="130" x="380" y="140" as="geometry" />
+        </mxCell>
+
+        <!-- Conexión EVENTOS -> relación (cardinalidad N) -->
+        <mxCell id="ubic-rel-edge-eventos" edge="1" parent="1" source="094Md5rWevohRHeEFsmK-22" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" target="ubic-rel">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ubic-rel-edge-eventos-lbl" connectable="0" parent="ubic-rel-edge-eventos" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="N" vertex="1">
+          <mxGeometry relative="1" x="-0.2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Conexión relación -> UBICACIONES (cardinalidad 1) -->
+        <mxCell id="ubic-rel-edge-ubic" edge="1" parent="1" source="ubic-rel" style="rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" target="ubic-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ubic-rel-edge-ubic-lbl" connectable="0" parent="ubic-rel-edge-ubic" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="1" vertex="1">
+          <mxGeometry relative="1" x="0.2" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+
       </root>
     </mxGraphModel>
   </diagram>
