@@ -41,6 +41,14 @@ CREATE TABLE categorias (
     -- NOTA: La raíz tendría id_categoria_padre NULL
 );
 
+--Adicion de tala para el modulo de ubicaciones
+CREATE TABLE ubicaciones (
+    id_ubicacion SERIAL PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    direccion VARCHAR(150) NOT NULL,
+    ciudad VARCHAR(50) NOT NULL,
+    capacidad INT NOT NULL CHECK (capacidad > 0)
+);
 
 -- 4. Eventos (RF04, RE04)
 CREATE TABLE eventos (
@@ -52,6 +60,7 @@ CREATE TABLE eventos (
     fecha_inicio TIMESTAMP NOT NULL,
     fecha_fin TIMESTAMP NOT NULL,
     CONSTRAINT check_fechas CHECK (fecha_fin > fecha_inicio)
+    CONSTRAINT fk_ubicaciones FOREIGN KEY (id_ubicacion) REFERENCES ubicaciones(id_ubicacion)
 );
 
 
@@ -95,6 +104,18 @@ SELECT
 FROM eventos
 GROUP BY id_usuario_propietario, fecha_inicio::DATE;
 
+CREATE VIEW vista_ranking_ubicaciones AS
+SELECT
+    u.id_ubicacion,
+    u.nombre,
+    u.ciudad,
+    u.capacidad,
+    COUNT(e.id_evento) AS total_eventos
+FROM ubicaciones u
+LEFT JOIN eventos e ON e.id_ubicacion = u.id_ubicacion
+GROUP BY u.id_ubicacion, u.nombre, u.ciudad, u.capacidad
+ORDER BY total_eventos DESC;
+
 
 --Integridad y Prevención de Ciclos (RE05)
 --Para evitar ciclos en la jerarquía de categorías, podemos usar una función 
@@ -117,3 +138,36 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_evitar_ciclo
 BEFORE INSERT OR UPDATE ON categorias
 FOR EACH ROW EXECUTE FUNCTION evitar_ciclo_categorias();
+
+--Adicion de la columna de ubicaciones como fk
+ALTER TABLE eventos ADD COLUMN id_ubicacion INT;
+
+--crear una ubicación temporal para los eventos ya existentes
+INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad)
+VALUES ('Sin asignar', 'Pendiente de definir', 'N/A', 1);
+
+--asignar esa ubicación a los eventos que quedaron con NULL
+UPDATE eventos
+SET id_ubicacion = (SELECT id_ubicacion FROM ubicaciones WHERE nombre = 'Sin asignar')
+WHERE id_ubicacion IS NULL;
+
+--ahora sí, hacerla obligatoria
+ALTER TABLE eventos ALTER COLUMN id_ubicacion SET NOT NULL;
+
+--agregar la FK con nombre explícito
+ALTER TABLE eventos
+    ADD CONSTRAINT fk_ubicaciones FOREIGN KEY (id_ubicacion) REFERENCES ubicaciones(id_ubicacion);
+
+--Confirmacion de los cambios realizados (Creacion de la tabla de ubicaciones, alteracion de la tabla de eventos para adicion de la columna fk de ubicaciones)
+--select * from ubicaciones;
+--select * from eventos;
+
+INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
+('Auditorio Principal', 'Edificio A, planta baja', 'San José', 150),
+('Sala de Conferencias B', 'Edificio B, piso 2', 'San José', 30),
+('Sala de Reuniones C', 'Edificio B, piso 3', 'Heredia', 12),
+('Auditorio Norte', 'Campus Norte, entrada principal', 'Alajuela', 200),
+('Sala Virtual 1', 'Plataforma en línea', 'Remoto', 100),
+('Salón de Usos Múltiples', 'Edificio C, planta baja', 'Cartago', 80),
+('Terraza de Eventos', 'Edificio A, azotea', 'San José', 60);
+
