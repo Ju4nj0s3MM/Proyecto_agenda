@@ -563,15 +563,15 @@ class AppAgenda(ctk.CTk):
     def actualizar_evento(self):  
         eid = self.evento_seleccionado_id()  
         if eid is None: return messagebox.showwarning("Selección requerida", "Selecciona un evento.")  
-        try:  
-            usuario, categoria, titulo, inicio, fin = self.datos_evento_formulario()  
-            self.ejecutar_consulta("""  
-                UPDATE eventos SET id_usuario_propietario=%s, id_categoria=%s,  
-                titulo=%s, fecha_inicio=%s, fecha_fin=%s WHERE id_evento=%s  
-            """, (usuario, categoria, titulo, inicio, fin, eid))  
-            self.cargar_datos_eventos(); messagebox.showinfo("Éxito", "Evento actualizado.")  
-        except Exception as e:  
-            messagebox.showerror("No se pudo actualizar", str(e))
+        try:
+            usuario, categoria, ubicacion, titulo, inicio, fin = self.datos_evento_formulario()
+            self.ejecutar_consulta("""
+                UPDATE eventos SET id_usuario_propietario=%s, id_categoria=%s, id_ubicacion=%s,
+                titulo=%s, fecha_inicio=%s, fecha_fin=%s WHERE id_evento=%s
+            """, (usuario, categoria, ubicacion, titulo, inicio, fin, eid))
+            self.actualizar_todas_las_tablas(); messagebox.showinfo("Éxito", "Evento actualizado.")
+        except Exception as e:
+            messagebox.showerror("No se pudo actualizar", self.mensaje_error_amigable(e))
 
     def eliminar_evento(self):  
         eid = self.evento_seleccionado_id()  
