@@ -149,3 +149,12 @@ ALTER TABLE eventos
 --Confirmacion de los cambios realizados (Creacion de la tabla de ubicaciones, alteracion de la tabla de eventos para adicion de la columna fk de ubicaciones)
 --select * from ubicaciones;
 --select * from eventos;
+
+INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
+('Auditorio Principal', 'Edificio A, planta baja', 'San José', 150),
+('Sala de Conferencias B', 'Edificio B, piso 2', 'San José', 30),
+('Sala de Reuniones C', 'Edificio B, piso 3', 'Heredia', 12),
+('Auditorio Norte', 'Campus Norte, entrada principal', 'Alajuela', 200),
+('Sala Virtual 1', 'Plataforma en línea', 'Remoto', 100),
+('Salón de Usos Múltiples', 'Edificio C, planta baja', 'Cartago', 80),
+('Terraza de Eventos', 'Edificio A, azotea', 'San José', 60);
