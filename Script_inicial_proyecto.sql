@@ -50,17 +50,17 @@ CREATE TABLE ubicaciones (
     capacidad INT NOT NULL CHECK (capacidad > 0)
 );
 
--- 4. Eventos (RF04, RE04)
+-- 4. Eventos (RF04, RE04, RF-09)
 CREATE TABLE eventos (
     id_evento SERIAL PRIMARY KEY,
     id_usuario_propietario INT NOT NULL REFERENCES usuarios(id_usuario),
-    id_categoria INT NOT NULL REFERENCES categorias(id_categoria),
+    id_categoria INT NOT NULL REFERENCES categorias(id_categoria), --Al usar REFERENCES categorias(id_categoria) postgress crea automaticamente la FK
+    id_ubicacion INT NOT NULL REFERENCES ubicaciones(id_ubicacion),
     titulo VARCHAR(100) NOT NULL,
     descripcion TEXT,
     fecha_inicio TIMESTAMP NOT NULL,
     fecha_fin TIMESTAMP NOT NULL,
     CONSTRAINT check_fechas CHECK (fecha_fin > fecha_inicio)
-    CONSTRAINT fk_ubicaciones FOREIGN KEY (id_ubicacion) REFERENCES ubicaciones(id_ubicacion)
 );
 
 
@@ -79,6 +79,20 @@ CREATE TABLE log_accesos (
     id_log SERIAL PRIMARY KEY,
     id_usuario INT REFERENCES usuarios(id_usuario),
     fecha_acceso TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 8. Tareas (RF-15, RE-?, RN-?)
+CREATE TABLE tareas (
+    id_tarea SERIAL PRIMARY KEY,
+    id_evento INT NOT NULL REFERENCES eventos(id_evento) ON DELETE CASCADE,
+    id_usuario_responsable INT NOT NULL REFERENCES usuarios(id_usuario),
+    titulo VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    prioridad VARCHAR(20) NOT NULL DEFAULT 'media'
+        CHECK (prioridad IN ('baja', 'media', 'alta')),
+    fecha_limite DATE NOT NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'pendiente'
+        CHECK (estado IN ('pendiente', 'en progreso', 'completada', 'cancelada'))
 );
 
 
@@ -116,6 +130,35 @@ LEFT JOIN eventos e ON e.id_ubicacion = u.id_ubicacion
 GROUP BY u.id_ubicacion, u.nombre, u.ciudad, u.capacidad
 ORDER BY total_eventos DESC;
 
+-- Vista de Carga de Trabajo por Usuario (RF-16, RF-17)
+-- Cuenta tareas activas (pendiente/en_progreso) y, de esas, cuántas están vencidas.
+-- LEFT JOIN para que también aparezcan usuarios sin ninguna tarea asignada (0 en ambas columnas).
+CREATE VIEW vista_carga_tareas_usuario AS
+SELECT
+    u.id_usuario,
+    u.nombre,
+    u.apellido,
+    COUNT(*) FILTER (WHERE t.estado IN ('pendiente', 'en progreso')) AS tareas_activas,
+    COUNT(*) FILTER (WHERE t.estado IN ('pendiente', 'en progreso') AND t.fecha_limite < CURRENT_DATE) AS tareas_vencidas
+FROM usuarios u
+LEFT JOIN tareas t ON t.id_usuario_responsable = u.id_usuario
+GROUP BY u.id_usuario, u.nombre, u.apellido
+ORDER BY tareas_vencidas DESC, tareas_activas DESC;
+
+-- Vista de Eventos con Tareas Vencidas (RF-16)
+-- Identifica qué eventos arrastran tareas fuera de su plazo límite.
+CREATE VIEW vista_eventos_con_tareas_vencidas AS
+SELECT
+    e.id_evento,
+    e.titulo,
+    COUNT(t.id_tarea) AS tareas_vencidas
+FROM eventos e
+JOIN tareas t ON t.id_evento = e.id_evento
+WHERE t.estado NOT IN ('completada', 'cancelada')
+  AND t.fecha_limite < CURRENT_DATE
+GROUP BY e.id_evento, e.titulo
+ORDER BY tareas_vencidas DESC;
+
 
 --Integridad y Prevención de Ciclos (RE05)
 --Para evitar ciclos en la jerarquía de categorías, podemos usar una función 
@@ -139,28 +182,32 @@ CREATE TRIGGER trg_evitar_ciclo
 BEFORE INSERT OR UPDATE ON categorias
 FOR EACH ROW EXECUTE FUNCTION evitar_ciclo_categorias();
 
---Adicion de la columna de ubicaciones como fk
-ALTER TABLE eventos ADD COLUMN id_ubicacion INT;
+-- Integridad y Prevención de Traslapes de Ubicación (RF-09)
+-- Antes de insertar o actualizar un evento, se verifica que ningún otro evento
+-- ya registrado en la misma ubicación se solape en el tiempo con el nuevo horario.
+-- Dos rangos [inicio1, fin1) y [inicio2, fin2) se solapan si: inicio1 < fin2 AND fin1 > inicio2.
 
---crear una ubicación temporal para los eventos ya existentes
-INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad)
-VALUES ('Sin asignar', 'Pendiente de definir', 'N/A', 1);
+CREATE OR REPLACE FUNCTION evitar_traslape_ubicacion()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM eventos e
+        WHERE e.id_ubicacion = NEW.id_ubicacion
+          AND e.id_evento <> COALESCE(NEW.id_evento, -1)
+          AND NEW.fecha_inicio < e.fecha_fin
+          AND NEW.fecha_fin > e.fecha_inicio
+    ) THEN
+        RAISE EXCEPTION 'La ubicación seleccionada ya tiene un evento programado en ese rango de fecha y hora.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
---asignar esa ubicación a los eventos que quedaron con NULL
-UPDATE eventos
-SET id_ubicacion = (SELECT id_ubicacion FROM ubicaciones WHERE nombre = 'Sin asignar')
-WHERE id_ubicacion IS NULL;
 
---ahora sí, hacerla obligatoria
-ALTER TABLE eventos ALTER COLUMN id_ubicacion SET NOT NULL;
-
---agregar la FK con nombre explícito
-ALTER TABLE eventos
-    ADD CONSTRAINT fk_ubicaciones FOREIGN KEY (id_ubicacion) REFERENCES ubicaciones(id_ubicacion);
-
---Confirmacion de los cambios realizados (Creacion de la tabla de ubicaciones, alteracion de la tabla de eventos para adicion de la columna fk de ubicaciones)
---select * from ubicaciones;
---select * from eventos;
+CREATE TRIGGER trg_evitar_traslape_ubicacion
+BEFORE INSERT OR UPDATE ON eventos
+FOR EACH ROW EXECUTE FUNCTION evitar_traslape_ubicacion();
 
 INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
 ('Auditorio Principal', 'Edificio A, planta baja', 'San José', 150),
@@ -171,3 +218,8 @@ INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
 ('Salón de Usos Múltiples', 'Edificio C, planta baja', 'Cartago', 80),
 ('Terraza de Eventos', 'Edificio A, azotea', 'San José', 60);
 
+INSERT INTO tareas (id_evento, id_usuario_responsable, titulo, descripcion, prioridad, fecha_limite, estado)
+VALUES
+(9, 1, 'Confirmar catering', 'Llamar al proveedor y confirmar el menú', 'alta', CURRENT_DATE - 2, 'pendiente'),
+(9, 1, 'Enviar invitaciones', 'Mandar invitaciones por correo', 'media', CURRENT_DATE + 5, 'en_progreso'),
+(10, 1, 'Revisar logística', 'Confirmar transporte y equipo de sonido', 'baja', CURRENT_DATE - 1, 'en_progreso');
