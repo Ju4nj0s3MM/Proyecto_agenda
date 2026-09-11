@@ -508,12 +508,13 @@ class AppAgenda(ctk.CTk):
         sel = self.tree_eventos.selection()  
         if not sel: return  
         vals = self.tree_eventos.item(sel[0])["values"]  
-        self.entry_ev_titulo.delete(0, tk.END); self.entry_ev_titulo.insert(0, vals[3])  
+        self.entry_ev_titulo.delete(0, tk.END); self.entry_ev_titulo.insert(0, vals[4])  
         self.combo_ev_usuario.set(vals[1])  
         self.combo_ev_categoria.set(vals[2])  
+        self.combo_ev_ubicacion.set(vals[3])  
         try:  
-            ini = datetime.strptime(str(vals[4]), "%Y-%m-%d %H:%M")  
-            fin = datetime.strptime(str(vals[5]), "%Y-%m-%d %H:%M")  
+            ini = datetime.strptime(str(vals[5]), "%Y-%m-%d %H:%M")  
+            fin = datetime.strptime(str(vals[6]), "%Y-%m-%d %H:%M")  
             self.establecer_fecha(self.fecha_inicio, ini)  
             self.establecer_fecha(self.fecha_fin, fin)  
             self.hora_inicio.delete(0, tk.END); self.hora_inicio.insert(0, ini.strftime("%H:%M"))  
@@ -526,6 +527,7 @@ class AppAgenda(ctk.CTk):
         self.entry_ev_titulo.delete(0, tk.END)  
         self.combo_ev_usuario.set("Seleccione un usuario")  
         self.combo_ev_categoria.set("Seleccione una categoría")  
+        self.combo_ev_ubicacion.set("Seleccione una ubicación")  
         hoy = datetime.now()  
         self.establecer_fecha(self.fecha_inicio, hoy); self.establecer_fecha(self.fecha_fin, hoy)  
         self.hora_inicio.delete(0, tk.END); self.hora_inicio.insert(0, "09:00")  
@@ -579,10 +581,10 @@ class AppAgenda(ctk.CTk):
         if not messagebox.askyesno("Confirmar", "¿Eliminar el evento seleccionado?"): return  
         try:  
             self.ejecutar_consulta("DELETE FROM eventos WHERE id_evento=%s", (eid,))  
-            self.limpiar_form_evento(); self.cargar_datos_eventos()  
+            self.limpiar_form_evento(); self.actualizar_todas_las_tablas()  
             messagebox.showinfo("Eliminado", "Evento eliminado.")  
         except Exception as e:  
-            messagebox.showerror("No se pudo eliminar", str(e))
+            messagebox.showerror("No se pudo eliminar", self.mensaje_error_amigable(e))
 
     def cargar_datos_eventos(self):  
         try:  
