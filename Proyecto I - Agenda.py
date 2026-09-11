@@ -586,21 +586,24 @@ class AppAgenda(ctk.CTk):
 
     def cargar_datos_eventos(self):  
         try:  
-            rows = self.ejecutar_consulta("""  
-                SELECT e.id_evento, u.id_usuario, u.nombre, u.apellido,  
-                       c.id_categoria, c.nombre, e.titulo, e.fecha_inicio, e.fecha_fin  
-                FROM eventos e  
-                JOIN usuarios u ON u.id_usuario = e.id_usuario_propietario  
-                JOIN categorias c ON c.id_categoria = e.id_categoria  
-                ORDER BY e.fecha_inicio DESC  
-            """, fetch=True)  
-            for item in self.tree_eventos.get_children(): self.tree_eventos.delete(item)  
-            for row in rows:  
-                usuario = f"{row[2]} {row[3]} — #{row[1]}"  
-                categoria = f"{row[5]} — #{row[4]}"  
-                inicio = row[7].strftime("%Y-%m-%d %H:%M") if hasattr(row[7], "strftime") else row[7]  
-                fin = row[8].strftime("%Y-%m-%d %H:%M") if hasattr(row[8], "strftime") else row[8]  
-                self.tree_eventos.insert("", "end", values=(row[0], usuario, categoria, row[6], inicio, fin))
+            rows = self.ejecutar_consulta("""
+                SELECT e.id_evento, u.id_usuario, u.nombre, u.apellido,
+                       c.id_categoria, c.nombre, ub.id_ubicacion, ub.nombre,
+                       e.titulo, e.fecha_inicio, e.fecha_fin
+                FROM eventos e
+                JOIN usuarios u ON u.id_usuario = e.id_usuario_propietario
+                JOIN categorias c ON c.id_categoria = e.id_categoria
+                JOIN ubicaciones ub ON ub.id_ubicacion = e.id_ubicacion
+                ORDER BY e.fecha_inicio DESC
+            """, fetch=True)
+            for item in self.tree_eventos.get_children(): self.tree_eventos.delete(item)
+            for row in rows:
+                usuario = f"{row[2]} {row[3]} — #{row[1]}"
+                categoria = f"{row[5]} — #{row[4]}"
+                ubicacion = f"{row[7]} — #{row[6]}"
+                inicio = row[9].strftime("%Y-%m-%d %H:%M") if hasattr(row[9], "strftime") else row[9]
+                fin = row[10].strftime("%Y-%m-%d %H:%M") if hasattr(row[10], "strftime") else row[10]
+                self.tree_eventos.insert("", "end", values=(row[0], usuario, categoria, ubicacion, row[8], inicio, fin))
 
             valores_u = ["Seleccione un usuario"] + list(self.usuarios_combo.keys())  
             valores_c = ["Seleccione una categoría"] + list(self.categorias_combo.keys())

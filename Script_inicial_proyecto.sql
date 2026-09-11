@@ -104,6 +104,18 @@ SELECT
 FROM eventos
 GROUP BY id_usuario_propietario, fecha_inicio::DATE;
 
+CREATE VIEW vista_ranking_ubicaciones AS
+SELECT
+    u.id_ubicacion,
+    u.nombre,
+    u.ciudad,
+    u.capacidad,
+    COUNT(e.id_evento) AS total_eventos
+FROM ubicaciones u
+LEFT JOIN eventos e ON e.id_ubicacion = u.id_ubicacion
+GROUP BY u.id_ubicacion, u.nombre, u.ciudad, u.capacidad
+ORDER BY total_eventos DESC;
+
 
 --Integridad y Prevención de Ciclos (RE05)
 --Para evitar ciclos en la jerarquía de categorías, podemos usar una función 
@@ -158,3 +170,4 @@ INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
 ('Sala Virtual 1', 'Plataforma en línea', 'Remoto', 100),
 ('Salón de Usos Múltiples', 'Edificio C, planta baja', 'Cartago', 80),
 ('Terraza de Eventos', 'Edificio A, azotea', 'San José', 60);
+
