@@ -785,3 +785,6 @@ class AppAgenda(ctk.CTk):
 if __name__ == "__main__":  
     app = AppAgenda()  
     app.mainloop()  
+
+
+"""Prueba de commit para revisar la branch 2"""
