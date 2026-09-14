@@ -45,7 +45,7 @@ Repositorio en el cual se va a evaluar el primer protyecto de BD durante el II S
 ## Evidencias de la Interfaz Gráfica
 
 ### Pestaña: Usuarios (con Disponibilidad y Vinculación a Eventos)
-Evidencias/8C63F3F7-16E9-4D45-9EC0-816D9FF5F8BD.png
+![Usuarios](Evidencias/8C63F3F7-16E9-4D45-9EC0-816D9FF5F8BD.png)
 
 La pantalla de Gestión de Usuarios administra el directorio de personas registradas, y desde aquí se gestionan los módulos de Tareas y Disponibilidad de ese usuario:
 - **Tabla Central**: lista de usuarios con ID, Nombre, Apellido, Fecha de Registro y Estado Activo.
@@ -61,7 +61,7 @@ La pantalla de Gestión de Categorías organiza las actividades mediante una est
 - **Formulario CRUD**: campo de nombre y un dropdown para seleccionar la categoría padre, con protección a nivel de base de datos (trigger `trg_evitar_ciclo`) contra ciclos en la jerarquía.
 
 ### Pestaña: Eventos
-Evidencias/25765BD4-4CB2-49AF-A7BB-38551A012743.png
+![Eventos](Evidencias/25765BD4-4CB2-49AF-A7BB-38551A012743.png)
 
 La pantalla de Gestión de Eventos programa actividades vinculándolas con usuario propietario, categoría y ubicación.
 - **Tabla Central**: ID, Propietario, Categoría, Ubicación, Título, Inicio y Fin.
@@ -69,7 +69,7 @@ La pantalla de Gestión de Eventos programa actividades vinculándolas con usuar
 - **Validaciones automáticas a nivel de base de datos**: el sistema bloquea el guardado si la ubicación ya tiene otro evento en ese horario (RF-09), o si el propietario tiene una franja "ocupado"/"no disponible" que se cruza (RF-12) — ambos casos muestran un mensaje de error amigable en lugar del error técnico de PostgreSQL.
 
 ### Pestaña: Ubicaciones
-Evidencias/32016539-0F22-47D8-8B05-E4DBB734DC26.png
+![Ubicaciones](Evidencias/32016539-0F22-47D8-8B05-E4DBB734DC26.png)
 
 La pantalla de Gestión de Ubicaciones administra los recintos físicos donde se realizan los eventos (RF-08).
 - **Tabla Central**: ID, Nombre, Dirección, Ciudad y Capacidad.
@@ -77,7 +77,7 @@ La pantalla de Gestión de Ubicaciones administra los recintos físicos donde se
 - **Panel de reporte "Ranking de ocupación por ubicación"**: vista de solo lectura conectada a `vista_ranking_ubicaciones`, que muestra cuántos eventos tiene agendados cada recinto — permite identificar ubicaciones subutilizadas (RF-10).
 
 ### Pestaña: Tareas
-Evidencias/D44E7660-5796-4305-A88B-6546A0BD6595.png
+![Tareas](Evidencias/D44E7660-5796-4305-A88B-6546A0BD6595.png)
 
 La pantalla de Gestión de Tareas da seguimiento a las actividades asociadas a cada evento (RF-15).
 - **Tabla Central**: ID, Evento, Responsable, Título, Descripción, Prioridad, Fecha límite y Estado.
