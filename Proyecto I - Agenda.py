@@ -256,10 +256,12 @@ class AppAgenda(ctk.CTk):
         disp_form.grid(row=0, column=1, sticky="nsew")
 
         self.tree_disponibilidad = self.crear_treeview(
-            disp_tabla_frame, ("ID", "Fecha", "Inicio", "Fin", "Tipo"),
-            (40, 90, 60, 60, 90)
+            disp_tabla_frame, ("ID", "Fecha", "Inicio", "Fin", "Tipo", "Evento"),
+            (40, 90, 55, 55, 90, 130)
         )
         self.tree_disponibilidad.bind("<<TreeviewSelect>>", self.cargar_disponibilidad_seleccionada)
+
+        ctk.CTkLabel(disp_form, text="'Ocupado' se genera solo al vincular a un evento.\nUsa esto solo para ausencias personales:", font=ctk.CTkFont(size=10), justify="left").pack(anchor="w", padx=5, pady=(0, 5))
 
         ctk.CTkLabel(disp_form, text="Fecha").pack(anchor="w", padx=5, pady=(5, 0))
         self.fecha_disp = self.crear_selector_fecha(disp_form)
@@ -273,15 +275,12 @@ class AppAgenda(ctk.CTk):
         self.entry_disp_hora_fin = ctk.CTkEntry(disp_form, placeholder_text="HH:MM")
         self.entry_disp_hora_fin.pack(fill="x", padx=5, pady=2)
 
-        ctk.CTkLabel(disp_form, text="Tipo").pack(anchor="w", padx=5, pady=(5, 0))
-        self.combo_disp_tipo = ctk.CTkComboBox(disp_form, values=["disponible", "ocupado", "no disponible"], state="readonly")
-        self.combo_disp_tipo.set("disponible")
-        self.combo_disp_tipo.pack(fill="x", padx=5, pady=2)
-
-        ctk.CTkButton(disp_form, text="➕ Agregar", command=self.agregar_disponibilidad).pack(fill="x", padx=5, pady=(10, 3))
+        ctk.CTkButton(disp_form, text="🚫 Marcar no disponible", command=self.agregar_no_disponible).pack(fill="x", padx=5, pady=(10, 3))
         ctk.CTkButton(disp_form, text="💾 Actualizar", command=self.actualizar_disponibilidad).pack(fill="x", padx=5, pady=3)
         ctk.CTkButton(disp_form, text="🧹 Limpiar", command=self.limpiar_form_disponibilidad, fg_color="gray").pack(fill="x", padx=5, pady=3)
         ctk.CTkButton(disp_form, text="🗑️ Eliminar", command=self.eliminar_disponibilidad, fg_color="#b33939", hover_color="#8f2d2d").pack(fill="x", padx=5, pady=3)
+
+        
 
     def usuario_seleccionado_id(self):  
         sel = self.tree_usuarios.selection()  
@@ -377,24 +376,20 @@ class AppAgenda(ctk.CTk):
             pass
         self.entry_disp_hora_inicio.delete(0, tk.END); self.entry_disp_hora_inicio.insert(0, vals[2])
         self.entry_disp_hora_fin.delete(0, tk.END); self.entry_disp_hora_fin.insert(0, vals[3])
-        self.combo_disp_tipo.set(vals[4])
 
     def limpiar_form_disponibilidad(self):
         self.tree_disponibilidad.selection_remove(self.tree_disponibilidad.selection())
         self.establecer_fecha(self.fecha_disp, datetime.now())
         self.entry_disp_hora_inicio.delete(0, tk.END); self.entry_disp_hora_inicio.insert(0, "09:00")
         self.entry_disp_hora_fin.delete(0, tk.END); self.entry_disp_hora_fin.insert(0, "10:00")
-        if self.tipos_disponibilidad_combo:
-            self.combo_disp_tipo.set(list(self.tipos_disponibilidad_combo.keys())[0])
 
-    def datos_disponibilidad_formulario(self):
+    def datos_no_disponible_formulario(self):
         uid = self.usuario_seleccionado_id()
         if uid is None:
             raise ValueError("Selecciona un usuario en la tabla de arriba primero.")
-        tipo_nombre = self.combo_disp_tipo.get()
-        id_tipo = self.tipos_disponibilidad_combo.get(tipo_nombre)
+        id_tipo = self.tipos_disponibilidad_combo.get("no disponible")
         if id_tipo is None:
-            raise ValueError("Selecciona un tipo de disponibilidad válido.")
+            raise ValueError("No se encontró el tipo 'no disponible' en el catálogo.")
         fecha = self.obtener_fecha(self.fecha_disp)
         try:
             hi = datetime.strptime(self.entry_disp_hora_inicio.get().strip(), "%H:%M").time()
@@ -405,15 +400,15 @@ class AppAgenda(ctk.CTk):
             raise ValueError("La hora de fin debe ser posterior a la hora de inicio.")
         return uid, id_tipo, fecha, hi, hf
 
-    def agregar_disponibilidad(self):
+    def agregar_no_disponible(self):
         try:
-            uid, id_tipo, fecha, hi, hf = self.datos_disponibilidad_formulario()
+            uid, id_tipo, fecha, hi, hf = self.datos_no_disponible_formulario()
             self.ejecutar_consulta(
                 "INSERT INTO disponibilidades (id_usuario, id_tipo, fecha, hora_inicio, hora_fin) VALUES (%s, %s, %s, %s, %s)",
                 (uid, id_tipo, fecha, hi, hf)
             )
             self.limpiar_form_disponibilidad(); self.cargar_disponibilidades_usuario()
-            messagebox.showinfo("Éxito", "Franja de disponibilidad registrada.")
+            messagebox.showinfo("Éxito", "Franja 'no disponible' registrada.")
         except Exception as e:
             messagebox.showerror("No se pudo registrar", self.mensaje_error_amigable(e))
 
@@ -421,11 +416,14 @@ class AppAgenda(ctk.CTk):
         did = self.disponibilidad_seleccionada_id()
         if did is None:
             return messagebox.showwarning("Selección requerida", "Selecciona una franja para actualizar.")
+        vals = self.tree_disponibilidad.item(self.tree_disponibilidad.selection()[0])["values"]
+        if vals[4] != "no disponible":
+            return messagebox.showwarning("No editable", "Las franjas 'ocupado' son automáticas; se administran vinculando o desvinculando eventos, no editándolas aquí.")
         try:
-            uid, id_tipo, fecha, hi, hf = self.datos_disponibilidad_formulario()
+            uid, id_tipo, fecha, hi, hf = self.datos_no_disponible_formulario()
             self.ejecutar_consulta(
-                "UPDATE disponibilidades SET id_tipo=%s, fecha=%s, hora_inicio=%s, hora_fin=%s WHERE id_disponibilidad=%s",
-                (id_tipo, fecha, hi, hf, did)
+                "UPDATE disponibilidades SET fecha=%s, hora_inicio=%s, hora_fin=%s WHERE id_disponibilidad=%s",
+                (fecha, hi, hf, did)
             )
             self.cargar_disponibilidades_usuario()
             messagebox.showinfo("Éxito", "Franja actualizada.")
@@ -436,6 +434,9 @@ class AppAgenda(ctk.CTk):
         did = self.disponibilidad_seleccionada_id()
         if did is None:
             return messagebox.showwarning("Selección requerida", "Selecciona una franja.")
+        vals = self.tree_disponibilidad.item(self.tree_disponibilidad.selection()[0])["values"]
+        if vals[4] != "no disponible":
+            return messagebox.showwarning("No eliminable aquí", "Las franjas 'ocupado' se liberan desvinculando al usuario del evento, no eliminándolas aquí directamente.")
         if not messagebox.askyesno("Confirmar", "¿Eliminar la franja seleccionada?"):
             return
         try:
@@ -451,7 +452,6 @@ class AppAgenda(ctk.CTk):
         try:
             tipos = self.ejecutar_consulta("SELECT id_tipo, nombre FROM tipos_disponibilidad ORDER BY id_tipo", fetch=True)
             self.tipos_disponibilidad_combo = {nombre: tid for tid, nombre in tipos}
-            self.combo_disp_tipo.configure(values=list(self.tipos_disponibilidad_combo.keys()))
         except Exception as e:
             print(f"Error cargando tipos de disponibilidad: {e}")
 
@@ -459,9 +459,10 @@ class AppAgenda(ctk.CTk):
             return
         try:
             rows = self.ejecutar_consulta("""
-                SELECT d.id_disponibilidad, d.fecha, d.hora_inicio, d.hora_fin, t.nombre
+                SELECT d.id_disponibilidad, d.fecha, d.hora_inicio, d.hora_fin, t.nombre, e.titulo
                 FROM disponibilidades d
                 JOIN tipos_disponibilidad t ON t.id_tipo = d.id_tipo
+                LEFT JOIN eventos e ON e.id_evento = d.id_evento
                 WHERE d.id_usuario = %s
                 ORDER BY d.fecha, d.hora_inicio
             """, (uid,), fetch=True)
@@ -469,7 +470,8 @@ class AppAgenda(ctk.CTk):
                 fecha = row[1].strftime("%Y-%m-%d") if hasattr(row[1], "strftime") else row[1]
                 hi = row[2].strftime("%H:%M") if hasattr(row[2], "strftime") else str(row[2])[:5]
                 hf = row[3].strftime("%H:%M") if hasattr(row[3], "strftime") else str(row[3])[:5]
-                self.tree_disponibilidad.insert("", "end", values=(row[0], fecha, hi, hf, row[4]))
+                evento_txt = row[5] if row[5] else "—"
+                self.tree_disponibilidad.insert("", "end", values=(row[0], fecha, hi, hf, row[4], evento_txt))
         except Exception as e:
             print(f"Error cargando disponibilidad: {e}")
 
