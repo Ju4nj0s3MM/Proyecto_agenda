@@ -105,6 +105,7 @@ CREATE TABLE disponibilidades (
     id_disponibilidad SERIAL PRIMARY KEY,
     id_usuario INT NOT NULL REFERENCES usuarios(id_usuario),
     id_tipo INT NOT NULL REFERENCES tipos_disponibilidad(id_tipo),
+    id_evento INT REFERENCES eventos(id_evento) ON DELETE CASCADE,
     fecha DATE NOT NULL,
     hora_inicio TIME NOT NULL,
     hora_fin TIME NOT NULL,
@@ -259,6 +260,61 @@ CREATE TRIGGER trg_evitar_conflicto_disponibilidad
 BEFORE INSERT OR UPDATE ON participaciones
 FOR EACH ROW EXECUTE FUNCTION evitar_conflicto_disponibilidad();
 
+-- Agregar la columna que vincula una franja de disponibilidad con el evento que la generó
+-- (nullable, porque las franjas de "no disponible" manuales no vienen de ningún evento)
+ALTER TABLE disponibilidades
+    ADD COLUMN id_evento INT REFERENCES eventos(id_evento) ON DELETE CASCADE;
+
+-- Trigger: al vincular un usuario a un evento (INSERT en participaciones),
+-- crear automáticamente su franja "ocupado" con el horario exacto del evento.
+CREATE OR REPLACE FUNCTION marcar_ocupado_por_participacion()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_fecha_inicio TIMESTAMP;
+    v_fecha_fin TIMESTAMP;
+    v_id_tipo_ocupado INT;
+BEGIN
+    SELECT fecha_inicio, fecha_fin INTO v_fecha_inicio, v_fecha_fin
+    FROM eventos WHERE id_evento = NEW.id_evento;
+
+    SELECT id_tipo INTO v_id_tipo_ocupado
+    FROM tipos_disponibilidad WHERE nombre = 'ocupado';
+
+    INSERT INTO disponibilidades (id_usuario, id_tipo, id_evento, fecha, hora_inicio, hora_fin)
+    VALUES (
+        NEW.id_invitado,
+        v_id_tipo_ocupado,
+        NEW.id_evento,
+        v_fecha_inicio::date,
+        v_fecha_inicio::time,
+        v_fecha_fin::time
+    );
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_marcar_ocupado_por_participacion
+AFTER INSERT ON participaciones
+FOR EACH ROW EXECUTE FUNCTION marcar_ocupado_por_participacion();
+
+
+-- Trigger: al desvincular (DELETE en participaciones, sea manual o por cascada
+-- al borrar el evento), liberar automáticamente esa franja "ocupado".
+CREATE OR REPLACE FUNCTION liberar_disponibilidad_por_participacion()
+RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM disponibilidades
+    WHERE id_usuario = OLD.id_invitado
+      AND id_evento = OLD.id_evento;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_liberar_disponibilidad_por_participacion
+AFTER DELETE ON participaciones
+FOR EACH ROW EXECUTE FUNCTION liberar_disponibilidad_por_participacion();
+
 INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
 ('Auditorio Principal', 'Edificio A, planta baja', 'San José', 150),
 ('Sala de Conferencias B', 'Edificio B, piso 2', 'San José', 30),
@@ -268,11 +324,9 @@ INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
 ('Salón de Usos Múltiples', 'Edificio C, planta baja', 'Cartago', 80),
 ('Terraza de Eventos', 'Edificio A, azotea', 'San José', 60);
 
-INSERT INTO tareas (id_evento, id_usuario_responsable, titulo, descripcion, prioridad, fecha_limite, estado)
-VALUES
-(9, 1, 'Confirmar catering', 'Llamar al proveedor y confirmar el menú', 'alta', CURRENT_DATE - 2, 'pendiente'),
-(9, 1, 'Enviar invitaciones', 'Mandar invitaciones por correo', 'media', CURRENT_DATE + 5, 'en_progreso'),
-(10, 1, 'Revisar logística', 'Confirmar transporte y equipo de sonido', 'baja', CURRENT_DATE - 1, 'en_progreso');
-
 INSERT INTO tipos_disponibilidad (nombre) VALUES
 ('disponible'), ('ocupado'), ('no disponible');
+
+--DROP SCHEMA IF EXISTS prototipo CASCADE;
+--CREATE SCHEMA prototipo;
+--SET search_path TO prototipo, public;
