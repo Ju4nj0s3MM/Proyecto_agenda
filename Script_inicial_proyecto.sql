@@ -95,6 +95,22 @@ CREATE TABLE tareas (
         CHECK (estado IN ('pendiente', 'en progreso', 'completada', 'cancelada'))
 );
 
+-- 9. Disponibilidad de Usuarios (RF-11)
+CREATE TABLE tipos_disponibilidad (
+    id_tipo SERIAL PRIMARY KEY,
+    nombre VARCHAR(30) NOT NULL UNIQUE
+);
+
+CREATE TABLE disponibilidades (
+    id_disponibilidad SERIAL PRIMARY KEY,
+    id_usuario INT NOT NULL REFERENCES usuarios(id_usuario),
+    id_tipo INT NOT NULL REFERENCES tipos_disponibilidad(id_tipo),
+    fecha DATE NOT NULL,
+    hora_inicio TIME NOT NULL,
+    hora_fin TIME NOT NULL,
+    CONSTRAINT check_horas_disponibilidad CHECK (hora_fin > hora_inicio)
+);
+
 
 -- Implementación de Cálculos Dinámicos (RF07, RE03, RN03) mediante vistas
 
@@ -209,6 +225,40 @@ CREATE TRIGGER trg_evitar_traslape_ubicacion
 BEFORE INSERT OR UPDATE ON eventos
 FOR EACH ROW EXECUTE FUNCTION evitar_traslape_ubicacion();
 
+-- Integridad de Disponibilidad al vincular usuarios a eventos (RF-12)
+-- Antes de insertar/actualizar una participación, se verifica que el invitado
+-- no tenga una franja de 'ocupado' o 'no disponible' que se cruce con el horario del evento.
+CREATE OR REPLACE FUNCTION evitar_conflicto_disponibilidad()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_fecha_inicio TIMESTAMP;
+    v_fecha_fin TIMESTAMP;
+    v_tipo_conflicto VARCHAR(30);
+BEGIN
+    SELECT fecha_inicio, fecha_fin INTO v_fecha_inicio, v_fecha_fin
+    FROM eventos WHERE id_evento = NEW.id_evento;
+
+    SELECT t.nombre INTO v_tipo_conflicto
+    FROM disponibilidades d
+    JOIN tipos_disponibilidad t ON t.id_tipo = d.id_tipo
+    WHERE d.id_usuario = NEW.id_invitado
+      AND t.nombre IN ('ocupado', 'no disponible')
+      AND (d.fecha + d.hora_inicio) < v_fecha_fin
+      AND (d.fecha + d.hora_fin) > v_fecha_inicio
+    LIMIT 1;
+
+    IF v_tipo_conflicto IS NOT NULL THEN
+        RAISE EXCEPTION 'El usuario tiene una franja marcada como % en ese horario; no se puede vincular al evento.', v_tipo_conflicto;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_evitar_conflicto_disponibilidad
+BEFORE INSERT OR UPDATE ON participaciones
+FOR EACH ROW EXECUTE FUNCTION evitar_conflicto_disponibilidad();
+
 INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
 ('Auditorio Principal', 'Edificio A, planta baja', 'San José', 150),
 ('Sala de Conferencias B', 'Edificio B, piso 2', 'San José', 30),
@@ -223,3 +273,6 @@ VALUES
 (9, 1, 'Confirmar catering', 'Llamar al proveedor y confirmar el menú', 'alta', CURRENT_DATE - 2, 'pendiente'),
 (9, 1, 'Enviar invitaciones', 'Mandar invitaciones por correo', 'media', CURRENT_DATE + 5, 'en_progreso'),
 (10, 1, 'Revisar logística', 'Confirmar transporte y equipo de sonido', 'baja', CURRENT_DATE - 1, 'en_progreso');
+
+INSERT INTO tipos_disponibilidad (nombre) VALUES
+('disponible'), ('ocupado'), ('no disponible');
