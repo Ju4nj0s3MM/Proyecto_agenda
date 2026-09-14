@@ -41,3 +41,46 @@ Repositorio en el cual se va a evaluar el primer protyecto de BD durante el II S
 | | 4. Interfaz Gráfica | Desarrollar el panel de disponibilidad dentro de la pestaña Usuarios, con entrada manual solo para "no disponible" (ausencias personales) y visualización de las franjas del usuario seleccionado. | Completado |
 | RF-12 | 3. Modelo Físico | Implementar 4 triggers para automatizar y validar la disponibilidad: bloqueo de vinculaciones/eventos en conflicto (`trg_evitar_conflicto_disponibilidad`, `trg_verificar_disponibilidad_propietario`) y generación/liberación automática de "ocupado" (`trg_marcar_ocupado_por_participacion`, `trg_sincronizar_disponibilidad_propietario`, y sus triggers de liberación al desvincular/eliminar). | Completado |
 | | 4. Interfaz Gráfica | Integrar el panel "Vincular a un evento" para asociar usuarios a eventos, mostrando el bloqueo automático de conflictos y liberando la disponibilidad al desvincular. | Completado |
+
+## Evidencias de la Interfaz Gráfica
+
+### Pestaña: Usuarios (con Disponibilidad y Vinculación a Eventos)
+Evidencias/{8C63F3F7-16E9-4D45-9EC0-816D9FF5F8BD}.png
+
+La pantalla de Gestión de Usuarios administra el directorio de personas registradas, y desde aquí se gestionan los módulos de Tareas y Disponibilidad de ese usuario:
+- **Tabla Central**: lista de usuarios con ID, Nombre, Apellido, Fecha de Registro y Estado Activo.
+- **Formulario CRUD**: campos de Nombre y Apellido, switch de estado activo, y botones para Registrar, Actualizar, Limpiar y Eliminar.
+- **Panel "Disponibilidad del usuario seleccionado"**: muestra las franjas de tiempo del usuario elegido en la tabla (columna Evento indica si la franja "ocupado" fue generada automáticamente por un evento vinculado, o "—" si es una ausencia manual). Incluye un formulario para marcar manualmente franjas "no disponible" (ej. vacaciones).
+- **Panel "Vincular a un evento"**: permite asociar al usuario seleccionado con un evento existente (tabla `participaciones`), validando automáticamente su disponibilidad — si hay conflicto de horario, el sistema bloquea la vinculación con un mensaje explicativo.
+
+### Pestaña: Categorías
+Evidencias/{19CD1D18-E065-4D2D-9174-067BCE82FE51}.png
+
+La pantalla de Gestión de Categorías organiza las actividades mediante una estructura jerárquica de categorías y subcategorías.
+- **Tabla Central**: lista las categorías con su categoría padre (o "Sin categoría padre" si es raíz).
+- **Formulario CRUD**: campo de nombre y un dropdown para seleccionar la categoría padre, con protección a nivel de base de datos (trigger `trg_evitar_ciclo`) contra ciclos en la jerarquía.
+
+### Pestaña: Eventos
+Evidencias/{25765BD4-4CB2-49AF-A7BB-38551A012743}.png
+
+La pantalla de Gestión de Eventos programa actividades vinculándolas con usuario propietario, categoría y ubicación.
+- **Tabla Central**: ID, Propietario, Categoría, Ubicación, Título, Inicio y Fin.
+- **Formulario CRUD**: selectores dinámicos de Propietario, Categoría y Ubicación (poblados desde sus respectivas tablas), selectores de fecha/hora de inicio y fin.
+- **Validaciones automáticas a nivel de base de datos**: el sistema bloquea el guardado si la ubicación ya tiene otro evento en ese horario (RF-09), o si el propietario tiene una franja "ocupado"/"no disponible" que se cruza (RF-12) — ambos casos muestran un mensaje de error amigable en lugar del error técnico de PostgreSQL.
+
+### Pestaña: Ubicaciones
+Evidencias/{32016539-0F22-47D8-8B05-E4DBB734DC26}.png
+
+La pantalla de Gestión de Ubicaciones administra los recintos físicos donde se realizan los eventos (RF-08).
+- **Tabla Central**: ID, Nombre, Dirección, Ciudad y Capacidad.
+- **Formulario CRUD**: campos de texto para nombre, dirección, ciudad y capacidad (validada como número entero positivo).
+- **Panel de reporte "Ranking de ocupación por ubicación"**: vista de solo lectura conectada a `vista_ranking_ubicaciones`, que muestra cuántos eventos tiene agendados cada recinto — permite identificar ubicaciones subutilizadas (RF-10).
+
+### Pestaña: Tareas
+Evidencias/{D44E7660-5796-4305-A88B-6546A0BD6595}.png
+
+La pantalla de Gestión de Tareas da seguimiento a las actividades asociadas a cada evento (RF-15).
+- **Tabla Central**: ID, Evento, Responsable, Título, Descripción, Prioridad, Fecha límite y Estado.
+- **Formulario CRUD**: selectores dinámicos de Evento y Responsable, combos de Prioridad y Estado (con valores controlados por `CHECK` en la base de datos), selector de fecha límite.
+- **Panel "Carga de tareas por usuario"**: vista de solo lectura conectada a `vista_carga_tareas_usuario`, mostrando tareas activas y vencidas por persona (RF-17).
+- **Panel "Eventos con tareas vencidas"**: vista de solo lectura conectada a `vista_eventos_con_tareas_vencidas`, identificando qué eventos arrastran
