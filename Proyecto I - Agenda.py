@@ -280,7 +280,38 @@ class AppAgenda(ctk.CTk):
         ctk.CTkButton(disp_form, text="🧹 Limpiar", command=self.limpiar_form_disponibilidad, fg_color="gray").pack(fill="x", padx=5, pady=3)
         ctk.CTkButton(disp_form, text="🗑️ Eliminar", command=self.eliminar_disponibilidad, fg_color="#b33939", hover_color="#8f2d2d").pack(fill="x", padx=5, pady=3)
 
-        
+        panel_vincular = ctk.CTkFrame(paneles_frame, fg_color="transparent")
+        panel_vincular.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        ctk.CTkLabel(panel_vincular, text="🔗 Vincular a un evento", font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=5, pady=(5, 0))
+        ctk.CTkLabel(panel_vincular, text="Al vincular, se valida su disponibilidad y se marca 'ocupado' automáticamente.", font=ctk.CTkFont(size=11), wraplength=280, justify="left").pack(anchor="w", padx=5, pady=(0, 5))
+
+        vinc_body = ctk.CTkFrame(panel_vincular, fg_color="transparent")
+        vinc_body.pack(fill="both", expand=True, padx=5)
+        vinc_body.grid_columnconfigure(0, weight=2)
+        vinc_body.grid_columnconfigure(1, weight=1)
+        vinc_body.grid_rowconfigure(0, weight=1)
+
+        vinc_tabla_frame = ctk.CTkFrame(vinc_body)
+        vinc_tabla_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        vinc_form = ctk.CTkScrollableFrame(vinc_body, width=160)
+        vinc_form.grid(row=0, column=1, sticky="nsew")
+
+        self.tree_vinculaciones = self.crear_treeview(
+            vinc_tabla_frame, ("ID Evento", "Evento", "Rol", "Estado"),
+            (60, 110, 80, 90)
+        )
+
+        ctk.CTkLabel(vinc_form, text="Evento").pack(anchor="w", padx=5, pady=(5, 0))
+        self.combo_vinc_evento = ctk.CTkComboBox(vinc_form, values=["Seleccione un evento"], state="readonly")
+        self.combo_vinc_evento.set("Seleccione un evento")
+        self.combo_vinc_evento.pack(fill="x", padx=5, pady=2)
+
+        ctk.CTkLabel(vinc_form, text="Rol").pack(anchor="w", padx=5, pady=(5, 0))
+        self.entry_vinc_rol = ctk.CTkEntry(vinc_form, placeholder_text="invitado")
+        self.entry_vinc_rol.pack(fill="x", padx=5, pady=2)
+
+        ctk.CTkButton(vinc_form, text="🔗 Vincular", command=self.vincular_usuario_evento).pack(fill="x", padx=5, pady=(10, 3))
+        ctk.CTkButton(vinc_form, text="✂️ Desvincular", command=self.desvincular_usuario_evento, fg_color="#b33939", hover_color="#8f2d2d").pack(fill="x", padx=5, pady=3)
 
     def usuario_seleccionado_id(self):  
         sel = self.tree_usuarios.selection()  
@@ -298,6 +329,7 @@ class AppAgenda(ctk.CTk):
         else:  
             self.switch_usuario_activo.deselect()
         self.cargar_disponibilidades_usuario()
+        self.cargar_vinculaciones_usuario()
 
     def limpiar_form_usuario(self):  
         self.tree_usuarios.selection_remove(self.tree_usuarios.selection())  
@@ -474,6 +506,62 @@ class AppAgenda(ctk.CTk):
                 self.tree_disponibilidad.insert("", "end", values=(row[0], fecha, hi, hf, row[4], evento_txt))
         except Exception as e:
             print(f"Error cargando disponibilidad: {e}")
+
+    def cargar_vinculaciones_usuario(self):
+        uid = self.usuario_seleccionado_id()
+        for item in self.tree_vinculaciones.get_children(): self.tree_vinculaciones.delete(item)
+        valores_ev = ["Seleccione un evento"] + list(self.eventos_combo.keys())
+        self.combo_vinc_evento.configure(values=valores_ev)
+        if uid is None:
+            return
+        try:
+            rows = self.ejecutar_consulta("""
+                SELECT p.id_evento, e.titulo, p.rol, p.estado_confirmacion
+                FROM participaciones p
+                JOIN eventos e ON e.id_evento = p.id_evento
+                WHERE p.id_invitado = %s
+                ORDER BY e.fecha_inicio
+            """, (uid,), fetch=True)
+            for row in rows:
+                self.tree_vinculaciones.insert("", "end", values=(row[0], row[1], row[2], row[3]))
+        except Exception as e:
+            print(f"Error cargando vinculaciones: {e}")
+
+    def vincular_usuario_evento(self):
+        uid = self.usuario_seleccionado_id()
+        if uid is None:
+            return messagebox.showwarning("Selección requerida", "Selecciona un usuario en la tabla de arriba primero.")
+        id_evento = self.eventos_combo.get(self.combo_vinc_evento.get())
+        if id_evento is None:
+            return messagebox.showwarning("Selección requerida", "Selecciona un evento para vincular.")
+        rol = self.entry_vinc_rol.get().strip() or "invitado"
+        try:
+            self.ejecutar_consulta(
+                "INSERT INTO participaciones (id_evento, id_invitado, rol, estado_confirmacion) VALUES (%s, %s, %s, %s)",
+                (id_evento, uid, rol, "pendiente")
+            )
+            self.entry_vinc_rol.delete(0, tk.END)
+            self.cargar_vinculaciones_usuario()
+            self.cargar_disponibilidades_usuario()
+            messagebox.showinfo("Éxito", "Usuario vinculado al evento. Su disponibilidad se marcó 'ocupado' automáticamente.")
+        except Exception as e:
+            messagebox.showerror("No se pudo vincular", self.mensaje_error_amigable(e))
+
+    def desvincular_usuario_evento(self):
+        uid = self.usuario_seleccionado_id()
+        sel = self.tree_vinculaciones.selection()
+        if uid is None or not sel:
+            return messagebox.showwarning("Selección requerida", "Selecciona una vinculación de la lista para desvincular.")
+        id_evento = self.tree_vinculaciones.item(sel[0])["values"][0]
+        if not messagebox.askyesno("Confirmar", "¿Desvincular al usuario de este evento? Se liberará su disponibilidad 'ocupado'."):
+            return
+        try:
+            self.ejecutar_consulta("DELETE FROM participaciones WHERE id_evento=%s AND id_invitado=%s", (id_evento, uid))
+            self.cargar_vinculaciones_usuario()
+            self.cargar_disponibilidades_usuario()
+            messagebox.showinfo("Desvinculado", "El usuario fue desvinculado del evento.")
+        except Exception as e:
+            messagebox.showerror("No se pudo desvincular", self.mensaje_error_amigable(e))
 
     # -------------------- CATEGORÍAS --------------------
 
@@ -1173,7 +1261,8 @@ class AppAgenda(ctk.CTk):
         self.cargar_disponibilidades_usuario()
         self.cargar_datos_categorias()
         self.cargar_datos_ubicaciones()
-        self.cargar_datos_eventos()
+        self.cargar_datos_eventos()  
+        self.cargar_vinculaciones_usuario()
         self.cargar_reporte_ubicaciones()
         self.cargar_datos_tareas()
         self.cargar_reporte_carga_tareas()
@@ -1184,6 +1273,3 @@ class AppAgenda(ctk.CTk):
 if __name__ == "__main__":  
     app = AppAgenda()  
     app.mainloop()  
-
-
-"""Prueba de commit para revisar la branch 2"""

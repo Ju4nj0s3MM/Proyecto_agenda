@@ -315,6 +315,68 @@ CREATE TRIGGER trg_liberar_disponibilidad_por_participacion
 AFTER DELETE ON participaciones
 FOR EACH ROW EXECUTE FUNCTION liberar_disponibilidad_por_participacion();
 
+-- Verificar disponibilidad del propietario antes de crear/editar un evento (RF-12 extendido)
+CREATE OR REPLACE FUNCTION verificar_disponibilidad_propietario()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_tipo_conflicto VARCHAR(30);
+BEGIN
+    SELECT t.nombre INTO v_tipo_conflicto
+    FROM disponibilidades d
+    JOIN tipos_disponibilidad t ON t.id_tipo = d.id_tipo
+    WHERE d.id_usuario = NEW.id_usuario_propietario
+      AND t.nombre IN ('ocupado', 'no disponible')
+      AND (TG_OP = 'INSERT' OR d.id_evento IS DISTINCT FROM OLD.id_evento)
+      AND (d.fecha + d.hora_inicio) < NEW.fecha_fin
+      AND (d.fecha + d.hora_fin) > NEW.fecha_inicio
+    LIMIT 1;
+
+    IF v_tipo_conflicto IS NOT NULL THEN
+        RAISE EXCEPTION 'El propietario tiene una franja marcada como % en ese horario; no se puede crear/editar el evento.', v_tipo_conflicto;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_verificar_disponibilidad_propietario
+BEFORE INSERT OR UPDATE ON eventos
+FOR EACH ROW EXECUTE FUNCTION verificar_disponibilidad_propietario();
+
+
+-- Marcar automáticamente al propietario como 'ocupado' al crear/editar un evento
+CREATE OR REPLACE FUNCTION sincronizar_disponibilidad_propietario()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_id_tipo_ocupado INT;
+BEGIN
+    SELECT id_tipo INTO v_id_tipo_ocupado FROM tipos_disponibilidad WHERE nombre = 'ocupado';
+
+    IF TG_OP = 'UPDATE' THEN
+        DELETE FROM disponibilidades
+        WHERE id_evento = OLD.id_evento
+          AND id_usuario = OLD.id_usuario_propietario
+          AND id_tipo = v_id_tipo_ocupado;
+    END IF;
+
+    INSERT INTO disponibilidades (id_usuario, id_tipo, id_evento, fecha, hora_inicio, hora_fin)
+    VALUES (
+        NEW.id_usuario_propietario,
+        v_id_tipo_ocupado,
+        NEW.id_evento,
+        NEW.fecha_inicio::date,
+        NEW.fecha_inicio::time,
+        NEW.fecha_fin::time
+    );
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_sincronizar_disponibilidad_propietario
+AFTER INSERT OR UPDATE ON eventos
+FOR EACH ROW EXECUTE FUNCTION sincronizar_disponibilidad_propietario();
+
 INSERT INTO ubicaciones (nombre, direccion, ciudad, capacidad) VALUES
 ('Auditorio Principal', 'Edificio A, planta baja', 'San José', 150),
 ('Sala de Conferencias B', 'Edificio B, piso 2', 'San José', 30),
