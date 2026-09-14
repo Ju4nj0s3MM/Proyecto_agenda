@@ -1,5 +1,81 @@
 # Proyecto_agenda
-Repositorio en el cual se va a evaluar el primer protyecto de BD durante el II Sem del 2026.
+Repositorio del cual se va a evaluar el primer protyecto de BD durante el II Sem del 2026.
+
+## Requisitos e Instalación
+
+### Prerrequisitos
+
+- **PostgreSQL 18** (o superior), instalado localmente o corriendo en un contenedor Docker.
+- **Python 3.10** (o superior).
+- **Git**, para clonar el repositorio.
+- Un cliente de base de datos (recomendado: [DBeaver](https://dbeaver.io/download/), aunque también sirve `psql` desde la terminal).
+
+### 1. Clonar el repositorio
+
+```bash
+git clone https://github.com/Ju4nj0s3MM/Proyecto_agenda.git
+cd Proyecto_agenda
+```
+
+### 2. Crear la base de datos en PostgreSQL
+
+Desde tu cliente de base de datos (o `psql`), crea una base de datos llamada `agenda`:
+
+```sql
+CREATE DATABASE agenda;
+```
+
+### 3. Ejecutar el script de creación de tablas
+
+Abre `script.sql` en tu cliente conectado a la base de datos `agenda` y ejecútalo completo. Esto crea el esquema `prototipo`, todas las tablas, vistas y triggers.
+
+### 4. Instalar las dependencias de Python
+
+Se recomienda usar un entorno virtual (opcional pero buena práctica):
+
+```bash
+python -m venv venv
+# Windows
+venv\Scripts\activate
+# macOS / Linux
+source venv/bin/activate
+```
+
+Instala las librerías necesarias:
+
+```bash
+pip install customtkinter psycopg2-binary tkcalendar
+```
+
+**Notas:**
+- `tkinter` viene incluido con la instalación estándar de Python en Windows y macOS. En Linux (Ubuntu/Debian) puede requerir instalarse aparte:
+```bash
+  sudo apt install python3-tk
+```
+- Se usa `psycopg2-binary` en lugar de `psycopg2` para evitar la necesidad de compiladores C en la máquina (más simple de instalar en un entorno nuevo).
+- `tkcalendar` es opcional: si no se instala, la aplicación sigue funcionando pero sin el selector visual de fechas (se usa un campo de texto simple como respaldo).
+
+### 5. Configurar la conexión a la base de datos
+
+Abre `agenda.py` y ajusta los parámetros de conexión según tu configuración local:
+
+```python
+self.conn_params = {
+    "dbname": "agenda",
+    "user": "postgres",
+    "password": "postgres",
+    "host": "localhost",
+    "port": "5432",
+}
+```
+
+### 6. Ejecutar la aplicación
+
+```bash
+python agenda.py
+```
+
+Si los parámetros de conexión son correctos, se abrirá la interfaz gráfica con las 5 pestañas: Usuarios, Categorías, Eventos, Ubicaciones y Tareas.
 
 ## Matriz de Trazabilidad y Estado de Implementación
 
