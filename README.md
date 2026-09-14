@@ -54,7 +54,7 @@ La pantalla de Gestión de Usuarios administra el directorio de personas registr
 - **Panel "Vincular a un evento"**: permite asociar al usuario seleccionado con un evento existente (tabla `participaciones`), validando automáticamente su disponibilidad — si hay conflicto de horario, el sistema bloquea la vinculación con un mensaje explicativo.
 
 ### Pestaña: Categorías
-Evidencias/19CD1D18-E065-4D2D-9174-067BCE82FE51.png
+Evidencias/(19CD1D18-E065-4D2D-9174-067BCE82FE51).png
 
 La pantalla de Gestión de Categorías organiza las actividades mediante una estructura jerárquica de categorías y subcategorías.
 - **Tabla Central**: lista las categorías con su categoría padre (o "Sin categoría padre" si es raíz).
