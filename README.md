@@ -77,7 +77,7 @@ La pantalla de Gestión de Ubicaciones administra los recintos físicos donde se
 - **Panel de reporte "Ranking de ocupación por ubicación"**: vista de solo lectura conectada a `vista_ranking_ubicaciones`, que muestra cuántos eventos tiene agendados cada recinto — permite identificar ubicaciones subutilizadas (RF-10).
 
 ### Pestaña: Tareas
-![Tareas]({D44E7660-5796-4305-A88B-6546A0BD6595}.png)
+Evidencias/{D44E7660-5796-4305-A88B-6546A0BD6595}.png
 
 La pantalla de Gestión de Tareas da seguimiento a las actividades asociadas a cada evento (RF-15).
 - **Tabla Central**: ID, Evento, Responsable, Título, Descripción, Prioridad, Fecha límite y Estado.
